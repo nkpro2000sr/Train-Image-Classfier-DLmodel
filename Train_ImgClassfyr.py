@@ -8,8 +8,8 @@ import os, logging, json
 
 def train(p_Tds, p_Vds, p_saveModel, shape,
           epochs = 25, learning_rate = 0.001, #trade-off between time and accuracy
-          earlystop_monitor_and_mode = (-1,-1), callbacks = [],
-          IDG_kwargs = -1, # key word arguments for ImageDataGenerator
+          callbacks = 'early_stop_val_loss_min',
+          IDG_kwargs = -1,
           n_cnn_layers = 4, batch_size = 32,
           get_filters = -2, get_kernel_size = -2, get_pool_size = -1,
           save_json = True, show_graph = True) :
@@ -25,12 +25,9 @@ def train(p_Tds, p_Vds, p_saveModel, shape,
     $p_saveModel = path to save the trained model
     $shape = pixel size of the image to be reshaped
 
-    $earlystop_monitor_and_mode to Stop training when a monitored quantity has stopped improving
-     = False => disable earlystop
-     = (monitor, mode) arguments of ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
-    [0] = -1 => use default for monitor argument
-    [1] = -1 => use default for mode argument
-    $callbacks list of callables called while training model
+    $callbacks = list => list of callables called while training model
+     = 'early_stop_val_loss_min' => use early_stop_val_loss_min callbacks (see source code)
+     = False => for no callbacks
 
     $get_filters is a function to get filters for each Conv2D layers
      = lambda i:filters_list[i-1] #i is index of each layers
@@ -180,37 +177,33 @@ def train(p_Tds, p_Vds, p_saveModel, shape,
 
     fg_kwargs = dict()
 
-    if earlystop_monitor_and_mode :
-
-        es_kwargs = dict()
-        if earlystop_monitor_and_mode[0] != -1 : es_kwargs['monitor'] = earlystop_monitor_and_mode[0]
-        if earlystop_monitor_and_mode[1] != -1 : es_kwargs['mode'] = earlystop_monitor_and_mode[1]
+    if callbacks == 'early_stop_val_loss_min' :
 
         checkpoint = ModelCheckpoint(trained_model_file, # saving model_file
                                 save_best_only=True,
-                                verbose=1,
-                                **es_kwargs)
+                                monitor='val_loss',
+                                mode='min',
+                                verbose=1)
 
-        earlystop = EarlyStopping(min_delta=0,
+        earlystop = EarlyStopping(monitor='val_loss',
+                            min_delta=0,
                             patience=3,
                             verbose=1,
-                            restore_best_weights=True,
-                            **es_kwargs)
+                            restore_best_weights=True)
 
-        reduce_learning_rate = ReduceLROnPlateau(factor=0.2,
+        reduce_learning_rate = ReduceLROnPlateau(monitor='val_loss',
+                                factor=0.2,
                                 patience=3,
                                 verbose=1,
-                                min_delta=0.0001,
-                                **es_kwargs)
+                                min_delta=0.0001)
 
-        callbacks_ = [earlystop,checkpoint,reduce_learning_rate]
-        callbacks_.append(callbacks)
+        fg_kwargs['callbacks'] = [earlystop,checkpoint,reduce_learning_rate]
 
-        fg_kwargs["callbacks"] = callbacks_
+    #TODO add more defined callback methods
 
-    if len(callbacks) :
-        if "callbacks" not in fg_kwargs.keys() :
-            fg_kwargs["callbacks"] = list(callbacks)
+    elif callbacks :
+
+        fg_kwargs['callbacks'] = callbacks
 
     model.compile(loss='categorical_crossentropy',
                 optimizer = Adam(lr=learning_rate),
@@ -223,6 +216,7 @@ def train(p_Tds, p_Vds, p_saveModel, shape,
     number_of_validation_samples = len([j for _,_,i in os.walk(validation_data_dir) for j in i])
     jd["number_of_validation_samples"] = number_of_validation_samples
 
+    #TODO add checkpoints and auto restore them to resume training anywhere and anytime
     history=model.fit_generator(
                     train_generator,
                     steps_per_epoch=number_of_train_samples//batch_size,
