@@ -54,9 +54,9 @@ def train(p_Tds, p_Vds, p_saveModel, shape,
     
     jd = dict()
 
-    training_data_dir = tdd; jd["training_data_dir"]= training_data_dir
-    validation_data_dir = vdd; jd["validation_data_dir"]= validation_data_dir
-    trained_model_file = tmf; jd["trained_model_file"]= trained_model_file
+    training_data_dir = p_Tds; jd["training_data_dir"]= training_data_dir
+    validation_data_dir = p_Vds; jd["validation_data_dir"]= validation_data_dir
+    trained_model_file = p_saveModel; jd["trained_model_file"]= trained_model_file
 
     jd["labels"]= next(os.walk(training_data_dir))[1]
     assert (jd["labels"] == next(os.walk(validation_data_dir))[1]),\
@@ -112,7 +112,7 @@ def train(p_Tds, p_Vds, p_saveModel, shape,
     validation_generator = validation_datagen.flow_from_directory(
                                 validation_data_dir,
                                 color_mode=mode,
-                                target_size=(image_shape[0],image_shape[0]),
+                                target_size=(image_shape[0],image_shape[1]),
                                 batch_size=batch_size,
                                 class_mode='categorical',
                                 shuffle=True)
