@@ -138,7 +138,7 @@ def train(p_Tds, p_Vds, p_saveModel, shape,
     else : model.add(MaxPooling2D())
     model.add(Dropout(0.2))
 
-    for i in range(number_of_cnn_layers-1):
+    for i in range(n_cnn_layers-1):
         model.add(Conv2D(get_filters(i+2),get_kernel_size(i+2),padding='same',kernel_initializer='he_normal'))
         model.add(Activation('elu'))
         model.add(BatchNormalization())
