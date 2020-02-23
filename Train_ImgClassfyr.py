@@ -5,6 +5,7 @@ from tensorflow.keras.layers import Dense,Dropout,Activation,Flatten,BatchNormal
 from tensorflow.keras.layers import Conv2D,MaxPooling2D
 
 import os, logging, json
+from collections import defaultdict
 
 def train(p_Tds, p_Vds, p_saveModel, shape,
           epochs = 25, learning_rate = 0.001, #trade-off between time and accuracy
