@@ -7,7 +7,7 @@ from tensorflow.keras.layers import Conv2D,MaxPooling2D
 import os, logging, json
 from collections import defaultdict
 
-def train(p_Tds, p_Vds, p_saveModel, shape,
+def train(p_Tds, p_Vds, p_saveModel, input_shape,
           epochs = 25, learning_rate = 0.001, #trade-off between time and accuracy
           callbacks = 'early_stop_val_loss_min',
           IDG_kwargs = -1,
@@ -24,7 +24,7 @@ def train(p_Tds, p_Vds, p_saveModel, shape,
      and each subdir have pics of their respective lable
 
     $p_saveModel = path to save the trained model
-    $shape = pixel size of the image to be reshaped
+    $input_shape = pixel size of the image to be reshaped
 
     $callbacks = list => list of callables called while training model
      = 'early_stop_val_loss_min' => use early_stop_val_loss_min callbacks (see source code)
@@ -59,23 +59,8 @@ def train(p_Tds, p_Vds, p_saveModel, shape,
     validation_data_dir = p_Vds; jd["validation_data_dir"]= validation_data_dir
     trained_model_file = p_saveModel; jd["trained_model_file"]= trained_model_file
 
-    jd["labels"]= sorted(next(os.walk(training_data_dir))[1])
-    assert (jd["labels"] == sorted(next(os.walk(validation_data_dir))[1])),\
-           "labels must be same in both traning dataset and validation dataset"
-    num_classes = len(jd["labels"]) # no. of subdirectories in training_data_dir
-    jd["n_labels"]= num_classes
-    image_shape = shape # (r,c,p) => Image with `r` x `c` pixcels and `p` values in each pixcel
-    #                          p = 1 for grayscape and 3 for rgb or 4 for rgpa
-    jd["image_shape"]= shape
-
-    jd["dataset"] = dict(training= defaultdict(list), validation= defaultdict(list))
-    for label in jd["labels"]:
-        for file in os.listdir(os.path.join(training_data_dir,label)):
-            jd["dataset"]["training"][label].append(os.path.join(training_data_dir,label,file))
-        for file in os.listdir(os.path.join(validation_data_dir,label)):
-            jd["dataset"]["validation"][label].append(os.path.join(validation_data_dir,label,file))
-
-    # generating multiple images with different aspects from our train_data
+    image_shape = input_shape # (r,c,p) => Image with `r` x `c` pixcels and `p` values in each pixcel
+    #                                p = 1 for grayscape and 3 for rgb or 4 for rgpa
 
     if image_shape[2] == 1:
         mode = 'grayscale'
@@ -83,6 +68,8 @@ def train(p_Tds, p_Vds, p_saveModel, shape,
         mode = 'rgb'
     else :
         mode = 'rgba'
+
+    # generating multiple images with different aspects from our train_data
 
     if IDG_kwargs == -1 : IDG_kwargs = dict()
     elif IDG_kwargs == -2 :
@@ -117,6 +104,26 @@ def train(p_Tds, p_Vds, p_saveModel, shape,
                                 batch_size=batch_size,
                                 class_mode='categorical',
                                 shuffle=True)
+
+    # about dataset
+
+    jd["labels"]= sorted(list(train_generator.class_indices.keys()))
+    assert (jd["labels"] == sorted(list(validation_generator.class_indices.keys()))),\
+           "labels must be same in both traning dataset and validation dataset"
+    num_classes = len(jd["labels"]) # no. of subdirectories in training_data_dir
+    jd["n_labels"]= num_classes
+
+    jd["input_shape"]= image_shape
+    jd["color_mode"]= mode
+    jd["image_size"]= image_shape[:2]
+
+    jd["dataset"] = dict(training= defaultdict(list), validation= defaultdict(list))
+    for path in train_generator.filepaths :
+        label = os.path.split(os.path.dirname(path))[1]
+        jd["dataset"]["training"][label].append(path)
+    for path in validation_generator.filepaths :
+        label = os.path.split(os.path.dirname(path))[1]
+        jd["dataset"]["validation"][label].append(path)
 
     # creating model
 
@@ -212,9 +219,9 @@ def train(p_Tds, p_Vds, p_saveModel, shape,
 
     ## training model
 
-    number_of_train_samples = len([j for _,_,i in os.walk(training_data_dir) for j in i])
+    number_of_train_samples = len(train_generator.filepaths)
     jd["number_of_train_samples"] = number_of_train_samples
-    number_of_validation_samples = len([j for _,_,i in os.walk(validation_data_dir) for j in i])
+    number_of_validation_samples = len(validation_generator.filepaths)
     jd["number_of_validation_samples"] = number_of_validation_samples
 
     #TODO add checkpoints and auto restore them to resume training anywhere and anytime
