@@ -15,7 +15,7 @@ def train(p_Tds, p_Vds, p_saveModel, shape,
           get_filters = -2, get_kernel_size = -2, get_pool_size = -1,
           save_json = True, show_graph = True) :
     """
-    single function for traning model for all types of image classification
+    single function for training model for all types of image classification
     eg: emotion detection, gender classification, etc.,
 
     $p_Tds = path of the training dataset directory
@@ -59,8 +59,8 @@ def train(p_Tds, p_Vds, p_saveModel, shape,
     validation_data_dir = p_Vds; jd["validation_data_dir"]= validation_data_dir
     trained_model_file = p_saveModel; jd["trained_model_file"]= trained_model_file
 
-    jd["labels"]= next(os.walk(training_data_dir))[1]
-    assert (jd["labels"] == next(os.walk(validation_data_dir))[1]),\
+    jd["labels"]= sorted(next(os.walk(training_data_dir))[1])
+    assert (jd["labels"] == sorted(next(os.walk(validation_data_dir))[1])),\
            "labels must be same in both traning dataset and validation dataset"
     num_classes = len(jd["labels"]) # no. of subdirectories in training_data_dir
     jd["n_labels"]= num_classes
